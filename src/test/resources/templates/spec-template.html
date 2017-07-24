@@ -1,0 +1,199 @@
+<%  def fmt = new com.athaydes.spockframework.report.internal.StringFormatHelper()
+def stats = utils.stats( data )
+def outputFile = new File("./target/surefire-reports/${data.info.description.className}-output.txt")
+def outputFileText
+if (outputFile.exists()) {
+outputFileText = outputFile?.text
+}
+%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8'></meta>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+    <script type="text/javascript">
+        function hideshow(id){
+           var e = document.getElementById(id);
+           if(e.style.display == 'block')
+              e.style.display = 'none';
+           else
+              e.style.display = 'block';
+        }
+    </script>
+    <style>
+        .clickable {
+        cursor: pointer;
+        }
+    </style>
+</head>
+<body class="container">
+<!-- Breadcrumb -->
+<ol class="breadcrumb">
+    <li><a href="summary.html">all</a></li>
+    <li><a href="#">${data.info.description.className}</a></li>
+</ol>
+
+<!-- General information of the test -->
+<h2>Specification ${data.info.description.className}</h2>
+<hr>
+<div class='summary-report'>
+    <h3>Summary</h3>
+    <table class='table'>
+        <thead>
+        <th>Features</th>
+        <th>Failures</th>
+        <th>Errors</th>
+        <th>Skipped</th>
+        <th>Duration</th>
+        <th nowrap>Success rate</th>
+        </thead>
+        <tbody>
+        <tr>
+            <td>${stats.totalRuns + stats.failures + stats.errors}</td>
+            <td>${stats.failures}</td>
+            <td>${stats.errors}</td>
+            <td>${stats.skipped}</td>
+            <td nowrap>${fmt.toTimeDuration(stats.time)}</td>
+            <td class='<% if (stats.successRate < 1) out << "danger" else out << "success" %>' nowrap>${fmt.toPercentage(stats.successRate)}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- DEF and Error for test -->
+<h3>Features</h3>
+<div class="row">
+    <table class='table'>
+        <thead>
+        <th>Feature</th>
+        <th>Result</th>
+        </thead>
+        <tbody>
+        <%
+        def index = 0
+        features.eachFeature { name, result, blocks, iterations, params ->
+        index++
+        %>
+        <tr class='<% if (result == "FAIL" || result == "FAILURE" || result == "ERROR") out << "danger" else if (result == "IGNORED") out << "active" else out << "success" %>' id='0'>
+            <td onclick="hideshow('Block<%=index%>');">
+                <div id="${name}">
+                    <a>${name}</a>
+                </div>
+            </td>
+            <td><span>${result}</span></td>
+        </tr>
+
+        <tr id='Block<%=index%>' style='<% if (result == "PASS" || result == "IGNORED") out << "display: none" else out << "display: block" %>'>
+            <td>
+                <%
+                for ( block in blocks ) {
+                %>
+                <div>
+                    <span class='block-kind'>${block.kind}</span>
+                    <span class='block-text'>${block.text ? block.text : '""'}</span>
+                </div>
+                <%
+                }
+                %>
+            </td>
+        </tr>
+
+        <%  def problems = iterations.findAll { it.errors }
+        if ( problems ) {
+        %>
+        <tr>
+            <td colspan="2">
+                <div class="container">
+                <pre style="word-wrap: initial;">
+     <%
+            for ( badIteration in problems ) {
+                if ( badIteration.dataValues ) {
+                    out << '* ' << badIteration.dataValues << '\n'
+                }
+                for ( error in badIteration.errors ) {
+                    out << error << '\n'
+                }
+            }
+    %>
+                </pre>
+                </div>
+            </td>
+        </tr>
+        <%
+        }
+        %>
+
+        <%
+        }
+        %>
+        </tbody>
+    </table>
+</div>
+
+<!-- Other informations : sessions, output etc... -->
+<%
+def jSessionMatcher = outputFileText =~ /"[\w\s+()-]*": "([0-9a-zA-Z_-]{52}).*"/
+if ( jSessionMatcher != null ) {
+%>
+<h3>Session</h3>
+<ul>
+    <%
+    jSessionMatcher.each {
+    %>
+    <li>${it[0].split(":")[0]} : ${it[1]}(<a href="#" onclick="window.open('http://sepintranet.nce.amadeus.net/integration/spin/SWAT/performSession.jsp?logsid=${it[1]}','GetZipLogs','width=400,height=300')" target="popup">Get logs zip</a>)</li>
+    <%
+    }
+    %>
+</ul>
+<%
+}
+
+def sauceLabsFile = new File("./target/surefire-reports/${data.info.description.className}/SauceLabs.html")
+if (sauceLabsFile.exists()) {
+%>
+<h3>SauceLabs</h3>
+<ul>
+    <li><a target="blank" href="../surefire-reports/${data.info.description.className}/SauceLabs.html">See screencast</a></li>
+</ul>
+<%
+}
+if (outputFileText) {
+%>
+<h3 class="clickable" onclick="hideshow('outputSection');">Outputs +</h3>
+<div class="row" id="outputSection" style="display:none;">
+    <div class="details">
+        <pre><% out << outputFileText %></pre>
+    </div>
+</div>
+<%
+}
+%>
+<% def imagesDir = new File("./target/surefire-reports/${data.info.description.className}")
+if (imagesDir.exists()) {
+def files = imagesDir.listFiles().sort()
+%>
+<!-- Screenshots -->
+<h3 class="clickable" onclick="hideshow('screenshotSection');">Screenshots +</h3>
+<div class="row" id="screenshotSection" style="display:none;">
+    <%
+    files.each { file ->
+    if (file.name.endsWith(".png")) { %>
+    <div class="col-xs-6 col-md-3">
+        <a class="thumbnail" href="../surefire-reports/${data.info.description.className}/${file.name}" target="_blank" style='<% if (file.name.contains('failure')) out << "border:2px solid red" %>'>
+        <img src='<% out << "../surefire-reports/${data.info.description.className}/${file.name}"%>'>
+        <div class="caption">
+            <p>${file.name}</p>
+        </div>
+        </a>
+    </div>
+    <%}
+    }
+    %>
+</div>
+<%
+}
+%>
+<hr>
+<div class='footer'>Generated by <a href='<%out << com.athaydes.spockframework.report.SpockReportExtension.PROJECT_URL%>'>Spock Reports</a></div>
+</body>
+</html>
