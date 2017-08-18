@@ -9,6 +9,6 @@ class LoginFormModule extends Module {
   static content = {
     usernameInput { $('#usernameOrEmail') }
     passwordInput { $('#password') }
-    loginButton { $('.login__form-action button') }
+    loginButton { $('.login__form-action').find('button') }
   }
 }

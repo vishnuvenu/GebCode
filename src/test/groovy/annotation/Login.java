@@ -11,4 +11,5 @@ public @interface Login {
   String password() default "";
   String emulateUsername() default "";
   String emulateOfficeid() default "";
+  String appBaseURL() default "";
 }

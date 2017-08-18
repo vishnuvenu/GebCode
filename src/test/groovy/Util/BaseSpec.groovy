@@ -3,6 +3,7 @@ package Util
 import Pages.LoginScreen.LoginPage
 import Pages.WordPressWelcomeScreen.WordPressWelComePage
 import Util.UserModel.UserModel
+import annotation.DataDriven
 import annotation.Login
 import com.saucelabs.saucerest.SauceREST
 import geb.Browser
@@ -29,7 +30,7 @@ abstract class BaseSpec extends GebSpec  {
    *   * With maven: add -Dkey=value after mvn test
    */
   // To replace URL: -Dbase.URL = URL
-  static propBaseUrl = "base.URL"
+  static propBaseUrl = "App.URL"
   static propSaucelabUser = "geb.saucelabs.user"
   static propSaucelabKey = "geb.saucelabs.key"
   static propJobName = "jobName"
@@ -59,7 +60,19 @@ abstract class BaseSpec extends GebSpec  {
     String realImplClassName = getClass().getSimpleName()
     println "Init class: $realImplClassName"
     gebconfig = config.rawConfig
-    givenBaseUrl = CredentialUtils.getTestProperty(propBaseUrl, (String)gebconfig.defaultBaseUrl)
+    /**
+     * Read the URL mentioned in test level
+     */
+    if (this.class.isAnnotationPresent(Login)) {
+      def lgn = this.class.getAnnotation(Login)
+      givenBaseUrl = lgn.appBaseURL()
+    }
+    /**
+     * if the test level URL is not mentioned then read it from Gebconfig or Dmaven command
+     */
+    if ( givenBaseUrl.equals("") ) {
+      givenBaseUrl = CredentialUtils.getTestProperty(propBaseUrl, (String) gebconfig.baseUrl)
+    }
     //Report setting
     browserInstance = getBrowser()
     addCommonNavigatorMethods()
@@ -68,19 +81,17 @@ abstract class BaseSpec extends GebSpec  {
     cleanReportGroupDir()
     initDriver()
 
-    //start ghosting
+
     setup: "Login to url"
+
       if (this.class.isAnnotationPresent(Login)) {
         def lgn = this.class.getAnnotation(Login)
-        // use Helper.getSitecode() to get sitecode based on LSS key
         loadLoginPage()
-        // Login into SECO with DB or system property information
         userModel.username = lgn.username() == "" ? CredentialUtils.getUsername(lgn.lssuser()) : lgn.username()
         userModel.password = lgn.password() == "" ? CredentialUtils.getPassword(lgn.lssuser()) : lgn.password()
-//        userModel.emulateUsername = System.getProperty(propEmulateUsername, lgn.emulateUsername())
-//        userModel.emulateOfficeid = System.getProperty(propEmulateOfficeid, lgn.emulateOfficeid())
         this.loginToMainPage(userModel)
       }
+
   }
 
   def cleanup() {
@@ -119,7 +130,7 @@ abstract class BaseSpec extends GebSpec  {
    */
   void loadLoginPage() {
     //secoUrl = getBaseUrl() + "/app_sell2.0/apf/init/login?LANGUAGE=$language" + inputParam("SITE", sitecode)
-    givenBaseUrl = getBaseUrl()
+  //  givenBaseUrl = getBaseUrl()
     //  log.info "Load URL: <div id='testedURL' > ${secoUrl} </div>"
     browser.config.driver?.capabilities.with { println "Browser version: $browserName $version" }
     println "Load URL: <div id='testedURL' > ${givenBaseUrl} </div>"
@@ -143,7 +154,8 @@ abstract class BaseSpec extends GebSpec  {
    * if is DefaultOffice = false, test will force to login into the given officeid
    * [Feature emulate user] if &HELPDESK=1A is in SECO URL, emulateUsername and emulateOfficeid is necessary
    *
-   * @param userModel Contains all the LSS information required to login or emulate users
+   * @param userModel Contains all the LSS information required to
+   * or emulate users
    */
   // TODO add isDefaultOffice in DB or not?
   void loginToMainPage(UserModel userModel) {

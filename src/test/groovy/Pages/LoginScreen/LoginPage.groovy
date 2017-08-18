@@ -15,6 +15,6 @@ class LoginPage extends Page {
   def login(String username, String password) {
     loginModule.usernameInput = username
     loginModule.passwordInput = password
-    loginModule.loginButton
+    loginModule.loginButton.click()
   }
 }
